@@ -1,0 +1,6 @@
+export CUDA_VISIBLE_DEVICES=1
+python inference.py \
+  -C TAC_Based_MultiChnNet/config/inference.toml \
+  -M /path/to/MultiChnSpeechFMExperiments/v4/seen/TAC_Based_MultiChnNet_train_adapter_residual_from_pretrain_lr0.005_adapter_position_0_fixed_array_0123456_all/train_adapter_residual_from_pretrain_position_0_fixed_array_0123456/checkpoints/best_model.tar \
+  -O /path/to/MultiChnSpeechFMExperiments/v4/seen/TAC_Based_MultiChnNet_train_adapter_residual_from_pretrain_lr0.005_adapter_position_0_fixed_array_0123456_all/inference_adapter_residual_from_pretrain_position_0_fixed_array_0123456
+

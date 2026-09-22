@@ -1,0 +1,154 @@
+[meta]
+# save_dir is overridden per doa_finetune_mode configs; this is the shared base.
+save_dir = "../../../MultiChnSpeechFMExperiments_DOA/v5_moe_from_v2_doa_backbone_debug/TAC_Based_MultiChnNet_doa_moe_01346_full/"
+description = "DEBUG ablation: doa_finetune_mode=full + MoE adapter/router."
+seed = 0
+use_amp = false
+cudnn_enable = false
+preloaded_model_path = ""
+
+[acoustics]
+n_fft = 257
+win_length = 512
+sr = 16000
+hop_length = 256
+
+[array_geometry]
+n_mic = 7
+training_array_geometries = [[0, 1, 3, 4, 6]]
+test_array_geometries = [[0, 1, 3, 4, 6]]
+
+[init]
+# v2 / pretraining ModelDOA phase2. Overridable by -P / BACKBONE_CKPT.
+backbone_path = "/path/to/MultiChnSpeechFMExperiments_DOA/pretraining/TAC_Based_MultiChnNet_doa_phase2/train_doa_phase2/checkpoints/model_0012_best.pth"
+# Original MoE recipe ckpt: only expert_adapter_1..6 are loaded from here.
+moe_adapter_ckpt = "/path/to/MultiChnSpeechFMExperiments/v6_moe_sisnr_kl_inner_adapter_ce_all_params_pretraining/TAC_Based_MultiChnNet_train_batch_mode_moe_adapters_position_0_fixed_array_01346/allhours_kl_0.01/train_batch_mode_moe_adapter_ce_allhours_kl_weight_0.01/checkpoints/best_model.tar"
+# expert_adapter_1..6 from moe_adapter_ckpt; moe_weights_* (router) random init
+load_moe_weights = false
+# false: v2 fusion_block repeat 0/1/2 -> fusion_block_4/5/6 (recommended)
+# true:  v2 fusion_block repeat 0 only -> all three fusion blocks
+copy_fusion_to_all = false
+# true: freeze sep backbone; only train MoE (+ optional DOA subset below)
+freeze_backbone = true
+# DOA finetune ablation (requires freeze_backbone=true). Overridable by env DOA_FINETUNE_MODE.
+#   none       - MoE adapter + router only
+#   full       - (1) entire DOA module + MoE
+#   head       - (2) doa_head + MoE
+#   head_conv  - (3) doa_head + conv1x1_pre + MoE
+doa_finetune_mode = "full"
+
+[doa]
+lambda_doa = 0.2
+num_doa_bins = 18
+doa_angle_range_deg = 180.0
+
+[loss_function]
+name = "si_snr_loss"
+[loss_function.args]
+
+[optimizer]
+lr = 0.0001
+lr_decay = 1e-5
+
+[warmup]
+enabled = true
+epochs = 10
+# Fixed-length head crop: [0s, 4s) per utterance; zero-pad if shorter than 4s.
+training_utt_fixed_length = 4
+crop_mode = "head"
+batch_size = 36
+grad_accum_steps = 1
+
+[train_dataset]
+path = "dataset_fullutt.Dataset"
+
+[train_dataset.args]
+dataset_path = "/path/to/data/librispeech/multi_chn_simu_large_rx1.5/pkl_ark_data/train_960/ark_pickle/train_960_ark.pkl"
+filtered_utt_dur_range_in_seconds = [0, 100000000]
+max_nspk = 3
+n_mic = 7
+training_utt_fixed_length = -1
+sr = 16000
+first_n_hours = 50
+
+[train_dataset.dataloader]
+# Full-utterance phase batch size (warmup uses warmup.batch_size).
+batch_size = 8
+num_workers = 4
+drop_last = true
+pin_memory = false
+num_strata = 4
+
+[validation_dataset]
+path = "dataset_fullutt.Dataset"
+
+[validation_dataset.dataloader]
+batch_size = 1
+num_workers = 0
+
+[validation_dataset.args]
+dataset_path = "/path/to/data/librispeech/multi_chn_simu_large_rx1.5/pkl_ark_data/dev_clean/ark_pickle/dev_clean_ark.pkl"
+filtered_utt_dur_range_in_seconds = [0, 10000000]
+max_nspk = 3
+n_mic = 7
+training_utt_fixed_length = -1
+sr = 16000
+first_n_hours = -1
+
+[model]
+path = "TAC_Based_MultiChnNet.model_doa_moe.ModelDOAMoE"
+
+[model.args]
+N = 256
+B = 256
+H = 512
+P = 3
+X = 8
+R = 4
+V = 256
+norm = "BN"
+sr = 16000
+AF_premasking = false
+out_spk = 1
+non_linear = "linear"
+causal = false
+FFT_SIZE = 512
+HOP_SIZE = 256
+NFFT = 257
+input_features = ["LPS", "IPD", "AF"]
+cosIPD = true
+sinIPD = false
+speaker_feature_dim = 1
+merge_mode = "sum"
+TCN_layers = 6
+add_adapter_pos = -1
+ada_num = 4
+geometry_num = 1
+ce_loss = false
+num_doa_bins = 18
+doa_angle_range_deg = 180.0
+max_nspk = 3
+onset_pool_ratio = 1.0
+use_pred_doa_for_af = true
+
+[trainer]
+path = "TAC_Based_MultiChnNet.trainer.Trainer"
+[trainer.train]
+clip_grad_norm_value = 10
+grad_accum_steps = 4
+# Full-utterance epochs after warmup (total train = warmup.epochs + this = 10 + 50 = 60)
+epochs = 50
+save_checkpoint_interval = 1
+early_stop_patience = 5
+kl_loss = true
+kl_loss_weight = 0.01
+ce_loss_weight = 0.1
+
+[trainer.validation]
+save_max_metric_score = false
+validation_interval = 1
+
+[trainer.visualization]
+metrics = ["WB_PESQ", "NB_PESQ", "STOI", "SI_SDR"]
+n_samples = 3
+num_workers = 36

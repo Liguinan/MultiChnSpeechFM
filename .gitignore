@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*.so
+.DS_Store
+.idea/
+.vscode/
+*.egg-info/
+.venv/
+venv/
+
+# local checkpoints and data
+*.pth
+*.tar
+*.pkl
+*.ark
+*.wav
+*.flac
+*.pt
+*.ckpt
+experiments/
+checkpoints/
